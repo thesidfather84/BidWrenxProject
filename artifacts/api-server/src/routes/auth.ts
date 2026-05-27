@@ -562,7 +562,7 @@ router.post("/auth/fix-admins", async (req, res): Promise<void> => {
     res.status(403).json({ error: "Forbidden" }); return;
   }
 
-  // Fix bidwrenx@gmail.com — set role=admin and is_admin=true via raw SQL
+  // Fix bidwrenx@gmail.com — set is_admin=true without changing role
   await db.execute(sql`
     UPDATE users
     SET is_admin = true
