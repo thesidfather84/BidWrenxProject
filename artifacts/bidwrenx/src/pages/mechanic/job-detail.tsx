@@ -76,7 +76,8 @@ function SubmitBidModal({ jobId, open, onClose }: { jobId: number; open: boolean
         onClose();
         form.reset();
       },
-    onError: (err: any) => {
+         },
+      onError: (err: any) => {
   toast({
     title: "Bid not submitted",
     description: err?.data?.error || "Something went wrong. Please try again.",
