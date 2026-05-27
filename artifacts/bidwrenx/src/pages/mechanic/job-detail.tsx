@@ -56,7 +56,7 @@ function SubmitBidModal({ jobId, open, onClose }: { jobId: number; open: boolean
 
       callbacks.onSuccess();
     } catch (error) {
-      callbacks.onError(error);
+      callbacks.onError(data);
     }
   },
 };
