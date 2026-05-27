@@ -63,8 +63,8 @@ try {
 
       callbacks.onSuccess();
     } catch (error) {
-      callbacks.onError(data);
-    }
+  callbacks.onError(error);
+}
   },
 };
 
