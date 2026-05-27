@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "BidWrenx"
+version = "1.0.0"
+id = "artifacts/bidwrenx"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 19424
+
+[services.development]
+run = "pnpm --filter @workspace/bidwrenx run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/bidwrenx", "run", "build" ]
+publicDir = "artifacts/bidwrenx/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "19424"
+BASE_PATH = "/"

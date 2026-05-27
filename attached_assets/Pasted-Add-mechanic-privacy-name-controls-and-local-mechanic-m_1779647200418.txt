@@ -1,0 +1,67 @@
+Add mechanic privacy name controls and local mechanic map discovery features.
+
+Add mechanic privacy name controls.
+
+Mechanics should have:
+
+legal_name, private and admin-only
+display_name, public name shown to customers
+username, unique public handle
+show_legal_name_publicly true/false toggle
+
+During verification, require legal_name for admin review, but do not show it publicly unless the mechanic chooses to display it.
+
+Public mechanic profiles, bid cards, messages, reviews, search pages, and leaderboards should show display_name or username instead of legal_name.
+
+Admin dashboard should show both legal_name and display_name so the platform owner can verify identity safely.
+
+Add validation:
+
+username must be unique
+username should not include phone numbers, emails, offensive words, or reserved names like BidWrenx, admin, support
+if display_name is blank, fallback to username
+if username is blank, prompt mechanic to create one
+Add local mechanic discovery map.
+
+Create a “Mechanics Near Me” page with an interactive map showing approximate mechanic locations.
+
+Do NOT show exact home addresses. Use approximate area display only for privacy.
+
+Mechanics should be able to set:
+
+service radius
+city/state
+mobile mechanic available
+shop or mobile only
+willing to travel distance
+
+Show mechanic pins/cards with:
+
+profile photo
+display name
+mechanic level
+rating
+verified badges
+specialties
+mobile mechanic badge
+response time
+service radius
+
+Allow filtering by:
+
+distance
+category
+mobile mechanic
+verified profile
+rating
+emergency available
+
+Add “Use my location” support for customers.
+
+Use a lightweight map provider and optimize performance so the map does not slow down the app.
+
+Cluster nearby markers when zoomed out to reduce load and clutter.
+
+Add admin controls for map visibility and privacy settings.
+
+Test all new features, mobile responsiveness, privacy protections, and performance. Fix errors and redeploy/publish the live production version after confirming everything works.

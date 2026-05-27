@@ -1,0 +1,1729 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: BidWrenx API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: jobs
+    description: Repair job operations
+  - name: bids
+    description: Bid operations
+  - name: messages
+    description: Messaging operations
+  - name: dashboard
+    description: Dashboard summary operations
+  - name: admin
+    description: Admin-only operations
+  - name: storage
+    description: Object storage upload and serving endpoints
+  - name: mechanic-map
+    description: Mechanic discovery map endpoints
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Bad request
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Unauthorized
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+
+  /storage/uploads/request-url:
+    post:
+      operationId: requestUploadUrl
+      tags: [storage]
+      summary: Request a presigned URL for file upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadUrlRequest"
+      responses:
+        "200":
+          description: Presigned upload URL generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadUrlResponse"
+        "400":
+          description: Missing or invalid fields
+
+  /storage/objects/{objectPath}:
+    get:
+      operationId: getStorageObject
+      tags: [storage]
+      summary: Serve an object entity
+      parameters:
+        - name: objectPath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Object content
+          content:
+            "*/*":
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Not found
+
+  /users/me/photo:
+    patch:
+      operationId: updateMyPhoto
+      tags: [auth]
+      summary: Save profile photo object path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePhotoInput"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+
+  /users/me/verification/request:
+    post:
+      operationId: requestVerification
+      tags: [auth]
+      summary: Mechanic submits a verification request
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+
+  /users/me/verification/documents:
+    patch:
+      operationId: updateVerificationDocuments
+      tags: [auth]
+      summary: Save insurance or certification document paths
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDocumentsInput"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+
+  /users/{id}/profile:
+    get:
+      operationId: getUserProfile
+      tags: [auth]
+      summary: Get a user's public profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "404":
+          description: Not found
+
+  /users/{id}/report:
+    post:
+      operationId: reportUser
+      tags: [auth]
+      summary: Report a user for circumvention or misconduct
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReportInput"
+      responses:
+        "201":
+          description: Report submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+        "400":
+          description: Bad request
+        "401":
+          description: Unauthorized
+
+  /jobs:
+    get:
+      operationId: listJobs
+      tags: [jobs]
+      summary: List all jobs (browsable by mechanics)
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, in_progress, completed, cancelled]
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Job"
+    post:
+      operationId: createJob
+      tags: [jobs]
+      summary: Create a new repair job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+
+  /jobs/my:
+    get:
+      operationId: listMyJobs
+      tags: [jobs]
+      summary: List jobs posted by the current customer
+      responses:
+        "200":
+          description: My jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Job"
+
+  /jobs/{id}:
+    get:
+      operationId: getJob
+      tags: [jobs]
+      summary: Get a job by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Job details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobDetail"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateJob
+      tags: [jobs]
+      summary: Update a job
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobStatusUpdate"
+      responses:
+        "200":
+          description: Updated job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+
+  /bids:
+    post:
+      operationId: createBid
+      tags: [bids]
+      summary: Submit a bid on a job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BidInput"
+      responses:
+        "201":
+          description: Bid submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bid"
+
+  /bids/my:
+    get:
+      operationId: listMyBids
+      tags: [bids]
+      summary: List bids submitted by the current mechanic
+      responses:
+        "200":
+          description: My bids
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BidWithJob"
+
+  /bids/{id}/accept:
+    patch:
+      operationId: acceptBid
+      tags: [bids]
+      summary: Accept a bid
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Bid accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Bid"
+
+  /messages:
+    post:
+      operationId: sendMessage
+      tags: [messages]
+      summary: Send a message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MessageInput"
+      responses:
+        "201":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Message"
+        "422":
+          description: Message blocked (circumvention detected)
+
+  /messages/threads:
+    get:
+      operationId: listThreads
+      tags: [messages]
+      summary: List message threads for the current user
+      responses:
+        "200":
+          description: List of threads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Thread"
+
+  /messages/threads/{jobId}/{otherUserId}:
+    get:
+      operationId: getThread
+      tags: [messages]
+      summary: Get messages in a thread
+      parameters:
+        - name: jobId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: otherUserId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Message"
+
+  /dashboard/customer:
+    get:
+      operationId: getCustomerDashboard
+      tags: [dashboard]
+      summary: Get customer dashboard summary
+      responses:
+        "200":
+          description: Customer dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CustomerDashboard"
+
+  /dashboard/mechanic:
+    get:
+      operationId: getMechanicDashboard
+      tags: [dashboard]
+      summary: Get mechanic dashboard summary
+      responses:
+        "200":
+          description: Mechanic dashboard
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MechanicDashboard"
+
+  /mechanics/map:
+    get:
+      operationId: listMechanicsMap
+      tags: [mechanic-map]
+      summary: Get all map-visible mechanics with location data
+      responses:
+        "200":
+          description: List of mechanics for map
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MechanicMapEntry"
+
+  /users/me/map-settings:
+    patch:
+      operationId: updateMyMapSettings
+      tags: [auth]
+      summary: Update mechanic map presence settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MapSettingsInput"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+
+  /admin/stats:
+    get:
+      operationId: getAdminStats
+      tags: [admin]
+      summary: Get platform-wide stats
+      responses:
+        "200":
+          description: Platform stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminStats"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden
+
+  /admin/users:
+    get:
+      operationId: listAdminUsers
+      tags: [admin]
+      summary: List all users
+      parameters:
+        - name: role
+          in: query
+          schema:
+            type: string
+            enum: [customer, mechanic]
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: All users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminUser"
+        "403":
+          description: Forbidden
+
+  /admin/users/{id}/suspend:
+    patch:
+      operationId: suspendUser
+      tags: [admin]
+      summary: Suspend or unsuspend a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SuspendInput"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUser"
+        "403":
+          description: Forbidden
+
+  /admin/users/{id}/verify:
+    patch:
+      operationId: verifyMechanic
+      tags: [admin]
+      summary: Verify or unverify a mechanic
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyInput"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUser"
+        "403":
+          description: Forbidden
+
+  /admin/users/{id}/flag:
+    patch:
+      operationId: flagUserAdmin
+      tags: [admin]
+      summary: Flag or unflag a user for review
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FlagInput"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUser"
+        "403":
+          description: Forbidden
+
+  /admin/jobs:
+    get:
+      operationId: listAdminJobs
+      tags: [admin]
+      summary: List all jobs (admin view)
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [open, in_progress, completed, cancelled]
+      responses:
+        "200":
+          description: All jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminJob"
+        "403":
+          description: Forbidden
+
+  /admin/jobs/{id}:
+    delete:
+      operationId: removeJob
+      tags: [admin]
+      summary: Cancel/remove a job
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Job cancelled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "403":
+          description: Forbidden
+
+  /admin/reports:
+    get:
+      operationId: listAdminReports
+      tags: [admin]
+      summary: List all user reports
+      parameters:
+        - name: reviewed
+          in: query
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: All reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AdminReport"
+        "403":
+          description: Forbidden
+
+  /admin/reports/{id}/review:
+    patch:
+      operationId: reviewReport
+      tags: [admin]
+      summary: Mark a report as reviewed
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReviewReportInput"
+      responses:
+        "200":
+          description: Updated report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminReport"
+        "403":
+          description: Forbidden
+
+  /admin/users/{id}/mechanic-verification:
+    patch:
+      operationId: adminReviewMechanicVerification
+      tags: [admin]
+      summary: Approve, reject, or pend a mechanic verification request
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminMechanicVerificationInput"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUser"
+        "403":
+          description: Forbidden
+
+  /mechanic/{id}/public-profile:
+    get:
+      operationId: getMechanicPublicProfile
+      tags: [auth]
+      summary: Get public mechanic profile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Mechanic public profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MechanicPublicProfile"
+        "404":
+          description: Not found
+
+  /users/me/identity:
+    patch:
+      operationId: updateMyIdentity
+      tags: [auth]
+      summary: Update display name, username, legal name, and privacy settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IdentityInput"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+        "409":
+          description: Username already taken
+
+  /users/me/referral:
+    get:
+      operationId: getMyReferral
+      tags: [auth]
+      summary: Get my referral code and stats
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Referral info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReferralInfo"
+        "401":
+          description: Unauthorized
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+        db:
+          type: string
+      required: [status, db]
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [customer, mechanic]
+        phone:
+          type: ["string", "null"]
+        location:
+          type: ["string", "null"]
+        bio:
+          type: ["string", "null"]
+        rating:
+          type: ["number", "null"]
+        reviewCount:
+          type: integer
+        warningCount:
+          type: integer
+        flaggedForReview:
+          type: boolean
+        suspended:
+          type: boolean
+        verified:
+          type: boolean
+        isAdmin:
+          type: boolean
+        photoUrl:
+          type: ["string", "null"]
+        emailVerified:
+          type: boolean
+        phoneVerified:
+          type: boolean
+        identityVerificationStatus:
+          type: string
+          enum: [none, pending, approved, rejected]
+        insuranceDocumentUploaded:
+          type: boolean
+        certificationDocumentUploaded:
+          type: boolean
+        adminVerifiedMechanic:
+          type: boolean
+        verificationNotes:
+          type: ["string", "null"]
+        verificationRequestedAt:
+          type: ["string", "null"]
+        termsAcceptedAt:
+          type: ["string", "null"]
+        hasPinSet:
+          type: boolean
+        pinLocked:
+          type: boolean
+        banned:
+          type: boolean
+        referralCode:
+          type: ["string", "null"]
+        specialties:
+          type: ["string", "null"]
+        legalName:
+          type: ["string", "null"]
+        displayName:
+          type: ["string", "null"]
+        username:
+          type: ["string", "null"]
+        showLegalNamePublicly:
+          type: boolean
+        mapCity:
+          type: ["string", "null"]
+        mapState:
+          type: ["string", "null"]
+        mapLat:
+          type: ["number", "null"]
+        mapLng:
+          type: ["number", "null"]
+        serviceRadiusMiles:
+          type: integer
+        isMobileMechanic:
+          type: boolean
+        shopType:
+          type: ["string", "null"]
+        willingToTravelMiles:
+          type: ["integer", "null"]
+        emergencyAvailable:
+          type: boolean
+        mapVisible:
+          type: boolean
+        createdAt:
+          type: string
+      required: [id, name, email, role, reviewCount, warningCount, flaggedForReview, suspended, verified, isAdmin, emailVerified, phoneVerified, identityVerificationStatus, insuranceDocumentUploaded, certificationDocumentUploaded, adminVerifiedMechanic, hasPinSet, pinLocked, banned, showLegalNamePublicly, serviceRadiusMiles, isMobileMechanic, emergencyAvailable, mapVisible, createdAt]
+
+    RegisterInput:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+        role:
+          type: string
+          enum: [customer, mechanic]
+        termsAccepted:
+          type: boolean
+        referralCode:
+          type: string
+      required: [name, email, password, role, termsAccepted]
+
+    LoginInput:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required: [email, password]
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+      required: [user, token]
+
+    ReportInput:
+      type: object
+      properties:
+        reason:
+          type: string
+          enum: [circumvention, harassment, fraud, spam, other]
+        details:
+          type: string
+        jobId:
+          type: integer
+      required: [reason]
+
+    Report:
+      type: object
+      properties:
+        id:
+          type: integer
+        reportedUserId:
+          type: integer
+        reason:
+          type: string
+        details:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required: [id, reportedUserId, reason, createdAt]
+
+    Job:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        vehicleMake:
+          type: string
+        vehicleModel:
+          type: string
+        vehicleYear:
+          type: integer
+        budgetMin:
+          type: ["number", "null"]
+        budgetMax:
+          type: ["number", "null"]
+        status:
+          type: string
+          enum: [open, in_progress, completed, cancelled]
+        location:
+          type: string
+        photos:
+          type: array
+          items:
+            type: string
+        bidCount:
+          type: integer
+        customerId:
+          type: integer
+        customerName:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+      required: [id, title, description, category, vehicleMake, vehicleModel, vehicleYear, status, location, photos, bidCount, customerId, customerName, createdAt, updatedAt]
+
+    JobDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        vehicleMake:
+          type: string
+        vehicleModel:
+          type: string
+        vehicleYear:
+          type: integer
+        budgetMin:
+          type: ["number", "null"]
+        budgetMax:
+          type: ["number", "null"]
+        status:
+          type: string
+          enum: [open, in_progress, completed, cancelled]
+        location:
+          type: string
+        photos:
+          type: array
+          items:
+            type: string
+        customerId:
+          type: integer
+        customerName:
+          type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+        bids:
+          type: array
+          items:
+            $ref: "#/components/schemas/BidDetail"
+      required: [id, title, description, category, vehicleMake, vehicleModel, vehicleYear, status, location, photos, customerId, customerName, createdAt, updatedAt, bids]
+
+    JobInput:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        vehicleMake:
+          type: string
+        vehicleModel:
+          type: string
+        vehicleYear:
+          type: integer
+        budgetMin:
+          type: number
+        budgetMax:
+          type: number
+        location:
+          type: string
+        photos:
+          type: array
+          items:
+            type: string
+      required: [title, description, category, vehicleMake, vehicleModel, vehicleYear, location]
+
+    JobStatusUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [open, in_progress, completed, cancelled]
+      required: [status]
+
+    BidInput:
+      type: object
+      properties:
+        jobId:
+          type: integer
+        amount:
+          type: number
+        estimatedDays:
+          type: integer
+        note:
+          type: string
+      required: [jobId, amount, estimatedDays]
+
+    Bid:
+      type: object
+      properties:
+        id:
+          type: integer
+        jobId:
+          type: integer
+        mechanicId:
+          type: integer
+        mechanicName:
+          type: string
+        amount:
+          type: number
+        estimatedDays:
+          type: integer
+        note:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, accepted, rejected, withdrawn]
+        createdAt:
+          type: string
+      required: [id, jobId, mechanicId, mechanicName, amount, estimatedDays, status, createdAt]
+
+    BidDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+        mechanicId:
+          type: integer
+        mechanicName:
+          type: string
+        mechanicRating:
+          type: ["number", "null"]
+        mechanicReviewCount:
+          type: integer
+        mechanicPhotoUrl:
+          type: ["string", "null"]
+        mechanicAdminVerified:
+          type: boolean
+        amount:
+          type: number
+        estimatedDays:
+          type: integer
+        note:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, accepted, rejected, withdrawn]
+        createdAt:
+          type: string
+      required: [id, mechanicId, mechanicName, mechanicReviewCount, mechanicAdminVerified, amount, estimatedDays, status, createdAt]
+
+    BidWithJob:
+      type: object
+      properties:
+        id:
+          type: integer
+        jobId:
+          type: integer
+        jobTitle:
+          type: string
+        jobStatus:
+          type: string
+          enum: [open, in_progress, completed, cancelled]
+        amount:
+          type: number
+        estimatedDays:
+          type: integer
+        note:
+          type: ["string", "null"]
+        status:
+          type: string
+          enum: [pending, accepted, rejected, withdrawn]
+        createdAt:
+          type: string
+      required: [id, jobId, jobTitle, jobStatus, amount, estimatedDays, status, createdAt]
+
+    MessageInput:
+      type: object
+      properties:
+        jobId:
+          type: integer
+        recipientId:
+          type: integer
+        content:
+          type: string
+      required: [jobId, recipientId, content]
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: integer
+        jobId:
+          type: integer
+        senderId:
+          type: integer
+        senderName:
+          type: string
+        recipientId:
+          type: integer
+        content:
+          type: string
+        createdAt:
+          type: string
+      required: [id, jobId, senderId, senderName, recipientId, content, createdAt]
+
+    Thread:
+      type: object
+      properties:
+        jobId:
+          type: integer
+        jobTitle:
+          type: string
+        otherUserId:
+          type: integer
+        otherUserName:
+          type: string
+        lastMessage:
+          type: string
+        lastMessageAt:
+          type: string
+        unreadCount:
+          type: integer
+      required: [jobId, jobTitle, otherUserId, otherUserName, lastMessage, lastMessageAt, unreadCount]
+
+    CustomerDashboard:
+      type: object
+      properties:
+        totalJobs:
+          type: integer
+        openJobs:
+          type: integer
+        inProgressJobs:
+          type: integer
+        completedJobs:
+          type: integer
+        totalBidsReceived:
+          type: integer
+        recentJobs:
+          type: array
+          items:
+            $ref: "#/components/schemas/Job"
+      required: [totalJobs, openJobs, inProgressJobs, completedJobs, totalBidsReceived, recentJobs]
+
+    MechanicDashboard:
+      type: object
+      properties:
+        totalBids:
+          type: integer
+        activeBids:
+          type: integer
+        acceptedBids:
+          type: integer
+        availableJobs:
+          type: integer
+        recentBids:
+          type: array
+          items:
+            $ref: "#/components/schemas/Bid"
+        recentJobs:
+          type: array
+          items:
+            $ref: "#/components/schemas/Job"
+      required: [totalBids, activeBids, acceptedBids, availableJobs, recentBids, recentJobs]
+
+    AdminStats:
+      type: object
+      properties:
+        totalUsers:
+          type: integer
+        totalCustomers:
+          type: integer
+        totalMechanics:
+          type: integer
+        totalJobs:
+          type: integer
+        totalBids:
+          type: integer
+        completedJobs:
+          type: integer
+        openJobs:
+          type: integer
+        totalMessages:
+          type: integer
+        totalReports:
+          type: integer
+        unreviewedReports:
+          type: integer
+        suspendedUsers:
+          type: integer
+        avgMechanicRating:
+          type: ["number", "null"]
+      required: [totalUsers, totalCustomers, totalMechanics, totalJobs, totalBids, completedJobs, openJobs, totalMessages, totalReports, unreviewedReports, suspendedUsers]
+
+    AdminUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum: [customer, mechanic]
+        rating:
+          type: ["number", "null"]
+        reviewCount:
+          type: integer
+        warningCount:
+          type: integer
+        flaggedForReview:
+          type: boolean
+        suspended:
+          type: boolean
+        verified:
+          type: boolean
+        isAdmin:
+          type: boolean
+        photoUrl:
+          type: ["string", "null"]
+        emailVerified:
+          type: boolean
+        phoneVerified:
+          type: boolean
+        identityVerificationStatus:
+          type: string
+          enum: [none, pending, approved, rejected]
+        insuranceDocumentPath:
+          type: ["string", "null"]
+        certificationDocumentPath:
+          type: ["string", "null"]
+        adminVerifiedMechanic:
+          type: boolean
+        verificationNotes:
+          type: ["string", "null"]
+        verificationRequestedAt:
+          type: ["string", "null"]
+        termsAcceptedAt:
+          type: ["string", "null"]
+        banned:
+          type: boolean
+        adminNotes:
+          type: ["string", "null"]
+        lastLoginIp:
+          type: ["string", "null"]
+        signupIp:
+          type: ["string", "null"]
+        deletedAt:
+          type: ["string", "null"]
+        referralCode:
+          type: ["string", "null"]
+        referredBy:
+          type: ["string", "null"]
+        specialties:
+          type: ["string", "null"]
+        legalName:
+          type: ["string", "null"]
+        displayName:
+          type: ["string", "null"]
+        username:
+          type: ["string", "null"]
+        showLegalNamePublicly:
+          type: boolean
+        createdAt:
+          type: string
+      required: [id, name, email, role, reviewCount, warningCount, flaggedForReview, suspended, banned, verified, isAdmin, emailVerified, phoneVerified, identityVerificationStatus, adminVerifiedMechanic, showLegalNamePublicly, createdAt]
+
+    MechanicPublicProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        bio:
+          type: ["string", "null"]
+        location:
+          type: ["string", "null"]
+        rating:
+          type: ["number", "null"]
+        reviewCount:
+          type: integer
+        photoUrl:
+          type: ["string", "null"]
+        specialties:
+          type: ["string", "null"]
+        adminVerifiedMechanic:
+          type: boolean
+        completedJobs:
+          type: integer
+        referralCode:
+          type: ["string", "null"]
+        badges:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+      required: [id, name, reviewCount, adminVerifiedMechanic, completedJobs, badges]
+
+    ReferralInfo:
+      type: object
+      properties:
+        referralCode:
+          type: string
+        referralCount:
+          type: integer
+        referredUsers:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              joinedAt:
+                type: string
+            required: [name, joinedAt]
+      required: [referralCode, referralCount, referredUsers]
+
+    AdminJob:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        vehicleMake:
+          type: string
+        vehicleModel:
+          type: string
+        vehicleYear:
+          type: integer
+        status:
+          type: string
+          enum: [open, in_progress, completed, cancelled]
+        location:
+          type: string
+        customerId:
+          type: integer
+        customerName:
+          type: string
+        bidCount:
+          type: integer
+        createdAt:
+          type: string
+      required: [id, title, description, category, vehicleMake, vehicleModel, vehicleYear, status, location, customerId, customerName, bidCount, createdAt]
+
+    AdminReport:
+      type: object
+      properties:
+        id:
+          type: integer
+        reporterId:
+          type: integer
+        reporterName:
+          type: string
+        reportedUserId:
+          type: integer
+        reportedUserName:
+          type: string
+        reason:
+          type: string
+        details:
+          type: ["string", "null"]
+        reviewed:
+          type: boolean
+        resolution:
+          type: ["string", "null"]
+        jobId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+      required: [id, reporterId, reporterName, reportedUserId, reportedUserName, reason, reviewed, createdAt]
+
+    SuspendInput:
+      type: object
+      properties:
+        suspended:
+          type: boolean
+      required: [suspended]
+
+    VerifyInput:
+      type: object
+      properties:
+        verified:
+          type: boolean
+      required: [verified]
+
+    FlagInput:
+      type: object
+      properties:
+        flaggedForReview:
+          type: boolean
+      required: [flaggedForReview]
+
+    ReviewReportInput:
+      type: object
+      properties:
+        resolution:
+          type: string
+      required: [resolution]
+
+    UploadUrlRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        size:
+          type: integer
+        contentType:
+          type: string
+      required: [name, size, contentType]
+
+    UploadUrlResponse:
+      type: object
+      properties:
+        uploadURL:
+          type: string
+        objectPath:
+          type: string
+        metadata:
+          $ref: "#/components/schemas/UploadUrlRequest"
+      required: [uploadURL, objectPath]
+
+    UpdatePhotoInput:
+      type: object
+      properties:
+        photoUrl:
+          type: string
+      required: [photoUrl]
+
+    UpdateDocumentsInput:
+      type: object
+      properties:
+        insuranceDocumentPath:
+          type: ["string", "null"]
+        certificationDocumentPath:
+          type: ["string", "null"]
+
+    IdentityInput:
+      type: object
+      properties:
+        displayName:
+          type: ["string", "null"]
+        username:
+          type: ["string", "null"]
+        legalName:
+          type: ["string", "null"]
+        showLegalNamePublicly:
+          type: boolean
+
+    MechanicMapEntry:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        photoUrl:
+          type: ["string", "null"]
+        rating:
+          type: ["number", "null"]
+        reviewCount:
+          type: integer
+        adminVerifiedMechanic:
+          type: boolean
+        specialties:
+          type: ["string", "null"]
+        bio:
+          type: ["string", "null"]
+        mapLat:
+          type: number
+        mapLng:
+          type: number
+        mapCity:
+          type: ["string", "null"]
+        mapState:
+          type: ["string", "null"]
+        serviceRadiusMiles:
+          type: integer
+        isMobileMechanic:
+          type: boolean
+        shopType:
+          type: string
+        emergencyAvailable:
+          type: boolean
+      required: [id, name, reviewCount, adminVerifiedMechanic, mapLat, mapLng, serviceRadiusMiles, isMobileMechanic, shopType, emergencyAvailable]
+
+    MapSettingsInput:
+      type: object
+      properties:
+        mapCity:
+          type: ["string", "null"]
+        mapState:
+          type: ["string", "null"]
+        serviceRadiusMiles:
+          type: integer
+        isMobileMechanic:
+          type: boolean
+        shopType:
+          type: string
+          enum: [shop, mobile, both]
+        willingToTravelMiles:
+          type: ["integer", "null"]
+        emergencyAvailable:
+          type: boolean
+        mapVisible:
+          type: boolean
+
+    AdminMechanicVerificationInput:
+      type: object
+      properties:
+        identityVerificationStatus:
+          type: string
+          enum: [none, pending, approved, rejected]
+        adminVerifiedMechanic:
+          type: boolean
+        verificationNotes:
+          type: ["string", "null"]
+      required: [identityVerificationStatus]
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        role:
+          type: string
+          enum: [customer, mechanic]
+        bio:
+          type: ["string", "null"]
+        location:
+          type: ["string", "null"]
+        rating:
+          type: ["number", "null"]
+        reviewCount:
+          type: integer
+        photoUrl:
+          type: ["string", "null"]
+        emailVerified:
+          type: boolean
+        phoneVerified:
+          type: boolean
+        identityVerificationStatus:
+          type: string
+          enum: [none, pending, approved, rejected]
+        insuranceDocumentUploaded:
+          type: boolean
+        certificationDocumentUploaded:
+          type: boolean
+        adminVerifiedMechanic:
+          type: boolean
+        verificationNotes:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+      required: [id, name, role, reviewCount, emailVerified, phoneVerified, identityVerificationStatus, insuranceDocumentUploaded, certificationDocumentUploaded, adminVerifiedMechanic, createdAt]
