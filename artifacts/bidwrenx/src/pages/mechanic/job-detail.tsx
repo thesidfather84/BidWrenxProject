@@ -98,7 +98,13 @@ function SubmitBidModal({ jobId, open, onClose }: { jobId: number; open: boolean
               <FormItem>
                 <FormLabel>Your Price ($)</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="250" data-testid="input-bid-amount" {...field} />
+                  <Input
+  type="number"
+  placeholder="250"
+  data-testid="input-bid-amount"
+  value={field.value ?? ""}
+  onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+/>
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -107,7 +113,13 @@ function SubmitBidModal({ jobId, open, onClose }: { jobId: number; open: boolean
               <FormItem>
                 <FormLabel>Estimated Days to Complete</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="2" data-testid="input-bid-days" {...field} />
+                  <Input
+  type="number"
+  placeholder="2"
+  data-testid="input-bid-days"
+  value={field.value ?? ""}
+  onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+/>
                 </FormControl>
                 <FormMessage />
               </FormItem>
