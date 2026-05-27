@@ -52,7 +52,7 @@ export default function ChangePasswordPage() {
 
       updateUser(data);
       toast({ title: "Password updated successfully" });
-      setLocation(data.role === "customer" ? "/customer/dashboard" : data.isAdmin ? "/admin" : "/mechanic/dashboard");
+      setLocation(data.isAdmin ? "/admin" : data.role === "customer" ? "/customer/dashboard" : "/mechanic/dashboard");
     } catch {
       setError("Network error. Please try again.");
     } finally {
