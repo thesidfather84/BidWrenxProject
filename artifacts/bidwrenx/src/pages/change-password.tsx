@@ -60,12 +60,12 @@ export default function ChangePasswordPage() {
     }
   };
 
-  // Redirect already-authed users who don't need to change
-  if (user && !user.mustChangePassword && !isForced) {
-    const dest = user.isAdmin ? "/admin" : user.role === "customer" ? "/customer/dashboard" : "/mechanic/dashboard";
-    setLocation(dest);
-    return null;
-  }
+  // Let logged-in users access this page to change their password manually.
+// Only redirect if there is no logged-in user.
+if (!user) {
+  setLocation("/login");
+  return null;
+}
 
   if (!user) return null;
 
