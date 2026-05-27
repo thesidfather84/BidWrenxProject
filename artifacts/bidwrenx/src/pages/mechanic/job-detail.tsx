@@ -76,9 +76,13 @@ function SubmitBidModal({ jobId, open, onClose }: { jobId: number; open: boolean
         onClose();
         form.reset();
       },
-      onError: (err: any) => {
-        toast({ title: "Failed to submit bid", description: err?.data?.error, variant: "destructive" });
-      },
+    onError: (err: any) => {
+  toast({
+    title: "Bid not submitted",
+    description: err?.data?.error || "Something went wrong. Please try again.",
+    variant: "destructive",
+  });
+},
     });
   };
 
