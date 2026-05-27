@@ -582,7 +582,7 @@ router.post("/auth/fix-admins", async (req, res): Promise<void> => {
     const h = hashPassword(generatedPassword);
     await db.execute(sql`
       INSERT INTO users (name, email, password_hash, role, is_admin, terms_accepted_at)
-      VALUES ('BidWrenx Admin', 'admin@bidwrenx.com', ${h}, 'admin', true, now())
+      VALUES ('BidWrenx Admin', 'admin@bidwrenx.com', ${h}, 'customer', true, now())
     `);
   }
 
