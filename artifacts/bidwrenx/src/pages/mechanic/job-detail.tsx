@@ -36,7 +36,7 @@ function SubmitBidModal({ jobId, open, onClose }: { jobId: number; open: boolean
     callbacks: { onSuccess: () => void; onError: (err: any) => void }
   ) => {
     try {
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("bidwrenx_token");
 
       const response = await fetch(`/api/jobs/${jobId}/bids`, {
         method: "POST",
