@@ -34,17 +34,7 @@ router.post("/jobs/:jobId/bids", requireAuth, async (req: AuthRequest, res): Pro
     return;
   }
 
-  const existingBid = await storage.getBidByJobAndMechanic(
-    parseInt(req.params.jobId),
-    req.user!.id
-  );
-
-  if (existingBid) {
-    res.status(400).json({
-      error: "You already submitted a bid for this job."
-    });
-    return;
-  }
+  
   const raw = Array.isArray(req.params.jobId) ? req.params.jobId[0] : req.params.jobId;
   const jobId = parseInt(raw, 10);
   if (isNaN(jobId)) { res.status(400).json({ error: "Invalid jobId" }); return; }
