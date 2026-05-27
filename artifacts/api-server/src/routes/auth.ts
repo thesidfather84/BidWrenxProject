@@ -565,7 +565,7 @@ router.post("/auth/fix-admins", async (req, res): Promise<void> => {
   // Fix bidwrenx@gmail.com — set role=admin and is_admin=true via raw SQL
   await db.execute(sql`
     UPDATE users
-    SET role = 'admin', is_admin = true
+    SET is_admin = true
     WHERE email = 'bidwrenx@gmail.com'
   `);
 
@@ -616,8 +616,8 @@ router.post("/auth/seed-demo", async (req, res): Promise<void> => {
   await db.execute(sql`
     INSERT INTO users (name, email, password_hash, role, is_admin, terms_accepted_at)
     VALUES
-      ('BidWrenx Admin', 'admin@bidwrenx.com', ${h}, 'admin', true, now()),
-      ('Sidney Admin',   'bidwrenx@gmail.com',  ${h}, 'admin', true, now())
+      ('BidWrenx Admin', 'admin@bidwrenx.com', ${h}, 'customer', true, now()),
+      ('Sidney Admin',   'bidwrenx@gmail.com',  ${h}, 'customer', true, now())
   `);
 
   req.log.info("Demo seed complete");
