@@ -67,29 +67,24 @@ function SubmitBidModal({ jobId, open, onClose }: { jobId: number; open: boolean
   });
 
   const onSubmit = (values: BidFormValues) => {
-    createBid.mutate({ data: values }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetJobQueryKey(jobId) });
-        queryClient.invalidateQueries({ queryKey: getListMyBidsQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetMechanicDashboardQueryKey() });
-        toast({ title: "Bid submitted!", description: "The customer will review your bid." });
-        onClose();
-        form.reset();
-      },
-         },
-      onError: (err: any) => {
-  toast({
-    title: "Bid not submitted",
-    description:
-  err?.data?.error ||
-  err?.data?.message ||
-  err?.message ||
-  "You may have already submitted a bid for this job.",
-    variant: "destructive",
+  createBid.mutate({ data: values }, {
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: getGetJobQueryKey(jobId) });
+      queryClient.invalidateQueries({ queryKey: getListMyBidsQueryKey() });
+      queryClient.invalidateQueries({ queryKey: getGetMechanicDashboardQueryKey() });
+      toast({ title: "Bid submitted!", description: "The customer will review your bid." });
+      onClose();
+      form.reset();
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Bid not submitted",
+        description: err?.data?.error || err?.data?.message || err?.message || "You may have already submitted a bid for this job.",
+        variant: "destructive",
+      });
+    },
   });
-},
-    });
-  };
+};
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
