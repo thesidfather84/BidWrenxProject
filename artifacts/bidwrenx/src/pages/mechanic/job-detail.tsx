@@ -80,7 +80,11 @@ function SubmitBidModal({ jobId, open, onClose }: { jobId: number; open: boolean
       onError: (err: any) => {
   toast({
     title: "Bid not submitted",
-    description: err?.data?.error || "Something went wrong. Please try again.",
+    description:
+  err?.data?.error ||
+  err?.data?.message ||
+  err?.message ||
+  "You may have already submitted a bid for this job.",
     variant: "destructive",
   });
 },
