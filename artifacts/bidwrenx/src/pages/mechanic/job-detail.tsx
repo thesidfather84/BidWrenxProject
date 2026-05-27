@@ -47,7 +47,14 @@ function SubmitBidModal({ jobId, open, onClose }: { jobId: number; open: boolean
         body: JSON.stringify(payload.data),
       });
 
-      const data = await response.json();
+      const text = await response.text();
+let data: any = {};
+
+try {
+  data = JSON.parse(text);
+} catch {
+  data = { error: "Server returned a non-JSON response. Check API route or deploy." };
+}
 
       if (!response.ok) {
         callbacks.onError({ data });
