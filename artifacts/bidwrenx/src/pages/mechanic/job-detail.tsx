@@ -29,7 +29,37 @@ type BidFormValues = z.infer<typeof bidSchema>;
 function SubmitBidModal({ jobId, open, onClose }: { jobId: number; open: boolean; onClose: () => void }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const createBid = useCreateBid();
+  const createBid = {
+  isPending: false,
+  mutate: async (
+    payload: { data: BidFormValues },
+    callbacks: { onSuccess: () => void; onError: (err: any) => void }
+  ) => {
+    try {
+      const token = localStorage.getItem("token");
+
+      const response = await fetch(`/api/jobs/${jobId}/bids`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify(payload.data),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        callbacks.onError({ data });
+        return;
+      }
+
+      callbacks.onSuccess();
+    } catch (error) {
+      callbacks.onError(error);
+    }
+  },
+};
 
   const form = useForm<BidFormValues>({
     resolver: zodResolver(bidSchema),
@@ -37,7 +67,7 @@ function SubmitBidModal({ jobId, open, onClose }: { jobId: number; open: boolean
   });
 
   const onSubmit = (values: BidFormValues) => {
-    createBid.mutate({ data: { jobId, ...values } as any }, {
+    createBid.mutate({ data: values }, {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: getGetJobQueryKey(jobId) });
         queryClient.invalidateQueries({ queryKey: getListMyBidsQueryKey() });
