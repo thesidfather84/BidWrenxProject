@@ -83,7 +83,6 @@ function UserDetailDialog({ user, onClose, onRefresh }: {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [togglingMapVisible, setTogglingMapVisible] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (user) {
@@ -93,148 +92,64 @@ function UserDetailDialog({ user, onClose, onRefresh }: {
     }
   }, [user?.id]);
 
-  // ✅ FIX #4: Better error handling
-  async function adminFetch(method: string, path: string, body?: object) {
-    const token = localStorage.getItem("bidwrenx_token") ?? "";
-    try {
-      const res = await fetch(`/api${path}`, {
-        method,
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        ...(body != null ? { body: JSON.stringify(body) } : {}),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error((err as any).error ?? `Request failed: ${res.status}`);
-      }
-      return res.json();
-    } catch (error) {
-      console.error(`Admin fetch failed: ${method} ${path}`, error);
-      throw error;
-    }
-  }
-
-  // ✅ FIX #1 & #2: Add proper cache invalidation
-  const { data: reports = [], isLoading: reportsLoading, isError: reportsError } = useQuery({
+  const { data: reports, isLoading: reportsLoading } = useQuery({
     queryKey: ["admin-user-reports", user?.id],
-    queryFn: async () => {
-      try {
-        const result = await adminFetch("GET", `/admin/users/${user!.id}/reports`);
-        return Array.isArray(result) ? result : [];
-      } catch (err) {
-        console.error("Failed to load reports:", err);
-        toast({ 
-          title: "Error loading reports", 
-          description: String(err),
-          variant: "destructive",
-          duration: 5000
-        });
-        return [];
-      }
-    },
+    queryFn: () => adminFetch("GET", `/admin/users/${user!.id}/reports`),
     enabled: !!user && tab === "reports",
-    retry: 2,
-    staleTime: 30000,
   });
 
-  // ✅ FIX #2: Same for IP history
-  const { data: ipHistory = [], isLoading: ipLoading, isError: ipError } = useQuery({
+  const { data: ipHistory, isLoading: ipLoading } = useQuery({
     queryKey: ["admin-user-ip", user?.id],
-    queryFn: async () => {
-      try {
-        const result = await adminFetch("GET", `/admin/users/${user!.id}/ip-history`);
-        return Array.isArray(result) ? result : [];
-      } catch (err) {
-        console.error("Failed to load IP history:", err);
-        toast({ 
-          title: "Error loading IP history", 
-          description: String(err),
-          variant: "destructive",
-          duration: 5000
-        });
-        return [];
-      }
-    },
+    queryFn: () => adminFetch("GET", `/admin/users/${user!.id}/ip-history`),
     enabled: !!user && tab === "ip",
-    retry: 2,
-    staleTime: 30000,
   });
 
-  // ✅ FIX #1: Add cache invalidation after save
   const handleSaveNotes = async () => {
-    if (!notes.trim()) {
-      toast({ title: "Notes cannot be empty", variant: "destructive" });
-      return;
-    }
     setSavingNotes(true);
     try {
       await adminFetch("PATCH", `/admin/users/${user!.id}/notes`, { notes });
-      // ✅ Invalidate cache so list refreshes
-      queryClient.invalidateQueries({ queryKey: getListAdminUsersQueryKey() });
-      toast({ title: "✓ Notes saved" });
+      toast({ title: "Notes saved" });
       onRefresh();
     } catch (e: any) {
-      const errorMessage = e?.message || "Failed to save notes";
-      toast({ title: "Error", description: errorMessage, variant: "destructive", duration: 5000 });
-    } finally { 
-      setSavingNotes(false); 
-    }
+      toast({ title: e.message ?? "Failed", variant: "destructive" });
+    } finally { setSavingNotes(false); }
   };
 
-  // ✅ FIX #1: Add cache invalidation after ban
   const handleBan = async () => {
     setBanning(true);
     try {
       await adminFetch("PATCH", `/admin/users/${user!.id}/ban`, { banned: !user!.banned });
-      // ✅ Invalidate cache
-      queryClient.invalidateQueries({ queryKey: getListAdminUsersQueryKey() });
-      toast({ title: user!.banned ? `✓ ${user!.name} unbanned` : `✓ ${user!.name} banned` });
+      toast({ title: user!.banned ? `${user!.name} unbanned` : `${user!.name} banned` });
       onRefresh();
       onClose();
     } catch (e: any) {
-      const errorMessage = e?.message || "Failed to ban user";
-      toast({ title: "Error", description: errorMessage, variant: "destructive", duration: 5000 });
-    } finally { 
-      setBanning(false); 
-    }
+      toast({ title: e.message ?? "Failed", variant: "destructive" });
+    } finally { setBanning(false); }
   };
 
-  // ✅ FIX #3 & #1: Fix delete confirmation logic + cache invalidation
   const handleDelete = async () => {
-    if (!confirmDelete) { 
-      setConfirmDelete(true); 
-      return; 
-    }
+    if (!confirmDelete) { setConfirmDelete(true); return; }
     setDeleting(true);
     try {
       await adminFetch("DELETE", `/admin/users/${user!.id}`);
-      // ✅ Invalidate cache
-      queryClient.invalidateQueries({ queryKey: getListAdminUsersQueryKey() });
-      toast({ title: `✓ ${user!.name} deleted` });
+      toast({ title: `${user!.name} deleted` });
       onRefresh();
       onClose();
     } catch (e: any) {
-      const errorMessage = e?.message || "Failed to delete user";
-      toast({ title: "Error", description: errorMessage, variant: "destructive", duration: 5000 });
+      toast({ title: e.message ?? "Failed", variant: "destructive" });
       setConfirmDelete(false);
-    } finally { 
-      setDeleting(false); 
-    }
+    } finally { setDeleting(false); }
   };
 
   const handleToggleMapVisible = async () => {
     setTogglingMapVisible(true);
     try {
       await adminFetch("PATCH", `/admin/users/${user!.id}/map-visible`, { mapVisible: !user!.mapVisible });
-      // ✅ Invalidate cache
-      queryClient.invalidateQueries({ queryKey: getListAdminUsersQueryKey() });
-      toast({ title: user!.mapVisible ? `✓ ${user!.name} hidden from map` : `✓ ${user!.name} visible on map` });
+      toast({ title: user!.mapVisible ? `${user!.name} hidden from map` : `${user!.name} visible on map` });
       onRefresh();
     } catch (e: any) {
-      const errorMessage = e?.message || "Failed to toggle map visibility";
-      toast({ title: "Error", description: errorMessage, variant: "destructive", duration: 5000 });
-    } finally { 
-      setTogglingMapVisible(false); 
-    }
+      toast({ title: e.message ?? "Failed", variant: "destructive" });
+    } finally { setTogglingMapVisible(false); }
   };
 
   if (!user) return null;
@@ -245,9 +160,6 @@ function UserDetailDialog({ user, onClose, onRefresh }: {
     { key: "reports", label: "Reports" },
     { key: "ip", label: "IP History" },
   ];
-
-  // ✅ FIX #5: Combine all loading states for button disabling
-  const isLoading = savingNotes || banning || deleting || togglingMapVisible;
 
   return (
     <Dialog open={!!user} onOpenChange={(o) => { if (!o) onClose(); }}>
@@ -284,12 +196,23 @@ function UserDetailDialog({ user, onClose, onRefresh }: {
           {tab === "overview" && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
-                <div><p className="text-xs text-muted-foreground mb-0.5">Name</p><p className="font-medium">{user.name}</p></div>
+                <div><p className="text-xs text-muted-foreground mb-0.5">Legal name</p><p className="font-medium">{user.name}{user.legalName && user.legalName !== user.name ? <span className="text-muted-foreground font-normal"> ({user.legalName})</span> : null}</p></div>
+                <div><p className="text-xs text-muted-foreground mb-0.5">Public name</p><p className="font-medium">{user.displayName ?? user.username ?? <span className="text-muted-foreground italic">uses account name</span>}</p></div>
                 <div><p className="text-xs text-muted-foreground mb-0.5">Email</p><p className="font-medium">{user.email}</p></div>
                 <div><p className="text-xs text-muted-foreground mb-0.5">Role</p><p className="font-medium capitalize">{user.role}</p></div>
-                <div><p className="text-xs text-muted-foreground mb-0.5">Status</p><p className="font-medium">{user.banned ? "Banned" : user.suspended ? "Suspended" : "Active"}</p></div>
                 <div><p className="text-xs text-muted-foreground mb-0.5">Joined</p><p className="font-medium">{new Date(user.createdAt).toLocaleDateString()}</p></div>
-                <div><p className="text-xs text-muted-foreground mb-0.5">Last Login</p><p className="font-medium">{user.lastLoginIp ? new Date(user.createdAt).toLocaleDateString() : "Never"}</p></div>
+                <div><p className="text-xs text-muted-foreground mb-0.5">Referral code</p><p className="font-mono text-xs">{user.referralCode ?? "—"}</p></div>
+                <div><p className="text-xs text-muted-foreground mb-0.5">Sign-up IP</p><p className="font-mono text-xs">{user.signupIp ?? "—"}</p></div>
+                <div><p className="text-xs text-muted-foreground mb-0.5">Last login IP</p><p className="font-mono text-xs">{user.lastLoginIp ?? "—"}</p></div>
+                {user.referredBy && (
+                  <div><p className="text-xs text-muted-foreground mb-0.5">Referred by code</p><p className="font-mono text-xs">{user.referredBy}</p></div>
+                )}
+                {user.username && (
+                  <div><p className="text-xs text-muted-foreground mb-0.5">Username</p><p className="font-mono text-xs">@{user.username}</p></div>
+                )}
+                {user.specialties && (
+                  <div className="col-span-2"><p className="text-xs text-muted-foreground mb-0.5">Specialties</p><p className="text-sm">{user.specialties}</p></div>
+                )}
               </div>
 
               {user.adminNotes && (
@@ -300,7 +223,6 @@ function UserDetailDialog({ user, onClose, onRefresh }: {
               )}
 
               <div className="pt-3 border-t border-border flex items-center gap-2 flex-wrap">
-                {/* ✅ FIX #5: Disable all buttons when any is loading */}
                 <Button
                   size="sm"
                   variant="outline"
@@ -309,7 +231,7 @@ function UserDetailDialog({ user, onClose, onRefresh }: {
                     : "text-red-400 border-red-500/30 hover:bg-red-500/10"
                   )}
                   onClick={handleBan}
-                  disabled={isLoading}
+                  disabled={banning}
                 >
                   <Ban size={13} />
                   {banning ? "…" : user.banned ? "Unban user" : "Ban user"}
@@ -324,58 +246,74 @@ function UserDetailDialog({ user, onClose, onRefresh }: {
                       : "text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
                     )}
                     onClick={handleToggleMapVisible}
-                    disabled={isLoading}
+                    disabled={togglingMapVisible}
                   >
-                    <Globe size={13} />
+                    <Map size={13} />
                     {togglingMapVisible ? "…" : user.mapVisible ? "Hide from map" : "Show on map"}
                   </Button>
                 )}
 
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-1.5 text-red-400 border-red-500/30 hover:bg-red-500/10 ml-auto"
-                  onClick={handleDelete}
-                  disabled={isLoading}
-                >
-                  <Trash2 size={13} />
-                  {deleting ? "…" : confirmDelete ? "Confirm Delete?" : "Delete user"}
-                </Button>
+                {!confirmDelete ? (
+                  <Button size="sm" variant="outline" className="gap-1.5 text-red-500 border-red-700/30 hover:bg-red-500/10" onClick={handleDelete}>
+                    <Trash2 size={13} /> Delete account
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <p className="text-xs text-red-400 font-medium">Permanently delete {user.name}?</p>
+                    <Button size="sm" variant="destructive" onClick={handleDelete} disabled={deleting}>
+                      {deleting ? "Deleting…" : "Yes, delete"}
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)}>Cancel</Button>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
           {tab === "notes" && (
             <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">Admin notes are private and visible only to admins.</p>
+              <p className="text-sm text-muted-foreground">Private admin notes — not visible to the user.</p>
               <Textarea
-                placeholder="Add admin notes (internal use only)..."
+                rows={7}
+                placeholder="e.g. Contacted about issue #42. Watching for further reports. Identity verified via email thread."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                rows={6}
               />
-              {/* ✅ FIX #5: Disable button when loading */}
-              <Button 
-                onClick={handleSaveNotes} 
-                disabled={isLoading || !notes.trim()}
+              <Button
+                size="sm"
+                onClick={handleSaveNotes}
+                disabled={savingNotes || notes === (user.adminNotes ?? "")}
               >
-                {savingNotes ? "Saving…" : "Save Notes"}
+                {savingNotes ? "Saving…" : "Save notes"}
               </Button>
             </div>
           )}
 
           {tab === "reports" && (
-            <div className="space-y-3">
-              {reportsLoading && <p className="text-sm text-muted-foreground">Loading reports…</p>}
-              {reportsError && <p className="text-sm text-red-400">Failed to load reports. Try again.</p>}
-              {reports.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No reports for this user.</p>
+            <div>
+              {reportsLoading ? (
+                <div className="space-y-2">{[...Array(3)].map((_, i) => <Skeleton key={i} className="h-14 rounded-lg" />)}</div>
+              ) : !reports?.length ? (
+                <p className="text-center text-muted-foreground py-8 text-sm">No reports involving this user.</p>
               ) : (
                 <div className="space-y-2">
                   {reports.map((r: any) => (
-                    <div key={r.id} className="p-3 rounded-lg border border-border">
-                      <p className="text-sm font-medium">{r.reason}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{r.description}</p>
+                    <div key={r.id} className={cn("rounded-lg border p-3", r.isAboutUser ? "border-red-500/20 bg-red-500/5" : "border-border bg-card")}>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={cn("text-xs px-1.5 py-0.5 rounded font-medium capitalize", r.isAboutUser ? "bg-red-500/20 text-red-400" : "bg-blue-500/10 text-blue-400")}>
+                          {r.isAboutUser ? "Reported" : "Reporter"}
+                        </span>
+                        <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground capitalize">{r.reason}</span>
+                        {r.reviewed && <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">Reviewed</span>}
+                        <span className="ml-auto text-xs text-muted-foreground">{new Date(r.createdAt).toLocaleDateString()}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {r.isAboutUser
+                          ? <span>Reported by <strong className="text-foreground">{r.reporterName}</strong></span>
+                          : <span>Reported <strong className="text-foreground">{r.reportedUserName}</strong></span>}
+                      </p>
+                      {r.details && <p className="text-xs text-muted-foreground mt-1">{r.details}</p>}
+                      {r.resolution && <p className="text-xs text-emerald-400 mt-1">Resolution: {r.resolution}</p>}
                     </div>
                   ))}
                 </div>
@@ -384,19 +322,19 @@ function UserDetailDialog({ user, onClose, onRefresh }: {
           )}
 
           {tab === "ip" && (
-            <div className="space-y-3">
-              {ipLoading && <p className="text-sm text-muted-foreground">Loading IP history…</p>}
-              {ipError && <p className="text-sm text-red-400">Failed to load IP history. Try again.</p>}
-              {ipHistory.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No IP history for this user.</p>
+            <div>
+              {ipLoading ? (
+                <div className="space-y-2">{[...Array(5)].map((_, i) => <Skeleton key={i} className="h-10 rounded-lg" />)}</div>
+              ) : !ipHistory?.length ? (
+                <p className="text-center text-muted-foreground py-8 text-sm">No login history found for this user.</p>
               ) : (
-                <div className="rounded-lg border border-border overflow-hidden">
-                  <table className="w-full text-xs">
+                <div className="rounded-xl border border-border overflow-hidden">
+                  <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border bg-muted/30">
-                        <th className="text-left px-3 py-2 font-semibold">IP Address</th>
-                        <th className="text-left px-3 py-2 font-semibold">Action</th>
-                        <th className="text-left px-3 py-2 font-semibold">When</th>
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">IP Address</th>
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Action</th>
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide">When</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border">
